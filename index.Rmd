@@ -12,3 +12,25 @@ output:
 ## Proposal
 
 Are women more likely than men to believe that the success of a woman's Instagram post is based on her physical appearance? I hypothesize that yes, women are more sensitive than men to the relationship between physical appearance and a post's success. Instagram provides tangible proof for something that many women have known for most of their lives: that their appearance dictates the attention they get from others. Because women are the primary focus of the beauty industry and the sometimes toxic culture it creates, I would expect them to be more sensitive to the relationship between looks and Instagram likes than men. My variables would be taken from Karina Sokolova's study of the objectification of women on Instagram. My explanatory variable is gender, which is measured by the respondent identifying themselves as either a "Woman" or a "Man." My outcome variable is the respondent's rating of the following statement: "The success of this photo is based on the sex appeal of the model." The experiment had the respondents rate their response on a scale of 1 to 5, with 1 indicating no relationship between success / sex appeal and 5 indicating a direct relationship between success / sex appeal. Women having higher ratings on average than men would support my hypothesis. Conversely, women having the same or lower ratings on average than men would disprove my hypothesis.
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+instagram <- read_csv("~/Library/Mobile Documents/com~apple~Numbers/Documents/sokolova_clean.csv")
+
+names(instagram) <- c("Sex", "Age", "Socioprofessional Category", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "q16", "q17", "q18", "q19", "q20", "q21", "q22", "q23", "q24", "q25", "q26", "q27", "q28", "q29", "q30")
+
+glimpse(instagram)
+
+instagram_plot <- instagram |>
+  group_by(Sex) |>
+  summarize(avg_q16 = mean(q16)) |>
+  ggplot(aes(x = Sex, y = avg_q16)) + geom_col() + labs(x = "Gender of Respondent", y = "Average Response to Question 16 (1-5)", title = "Relationship between Gender and Belief on Whether or Not Women's
+Sex Appeal Correlates to Instagram Success")
+
+instagram_plot
+```
+
+
+
