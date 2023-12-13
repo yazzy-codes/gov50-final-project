@@ -1,7 +1,7 @@
 ---
 title: "Gov 50 Final Project"
 author: "Yasmeen Khan"
-description: "My final project"
+description: "An exploration of the relationship between a woman's sex appeal and her success on Instagram"
 output:
   distill::distill_article:
     self_contained: false
@@ -9,11 +9,19 @@ output:
 
 
 
-## Proposal
+## Introduction
 
-Are women more likely than men to believe that the success of a woman's Instagram post is based on her physical appearance? I hypothesize that yes, women are more sensitive than men to the relationship between physical appearance and a post's success. Instagram provides tangible proof for something that many women have known for most of their lives: that their appearance dictates the attention they get from others. Because women are the primary focus of the beauty industry and the sometimes toxic culture it creates, I would expect them to be more sensitive to the relationship between looks and Instagram likes than men. My variables would be taken from Karina Sokolova's study of the objectification of women on Instagram. My explanatory variable is gender, which is measured by the respondent identifying themselves as either a "Woman" or a "Man." My outcome variable is the respondent's rating of the following statement: "The success of this photo is based on the sex appeal of the model." The experiment had the respondents rate their response on a scale of 1 to 5, with 1 indicating no relationship between success / sex appeal and 5 indicating a direct relationship between success / sex appeal. Women having higher ratings on average than men would support my hypothesis. Conversely, women having the same or lower ratings on average than men would undermine my hypothesis.
+Are women more likely than men to believe that the success of a woman's Instagram post is based on her physical appearance? I hypothesize that yes, women are more sensitive than men to the relationship between physical appearance and a post's success. Through its systems of likes, shares, and comments, Instagram provides measurable proof of something that many women have known for most of their lives: that their appearance influences the amount of attention they get from others. Because women are the primary audience of many forms of appearance-based advertising---from the beauty industry or the diet industry, for example---I would expect them to be more sensitive to the relationship between physical looks and Instagram likes than men.
 
-## Visualization
+This research is significant because of the central role social media plays in the lives of modern women. Image-based social media platforms specifically have been linked to self-esteem problems in women and girls. Analyzing women's awareness of how their appearance is measured on social media platforms is a preliminary step to understanding how the metrics of these platforms could in turn affect women's self-image. Because of its visual nature, Instagram is an ideal platform for this type of analysis, which could later be expanded to other image-based social media platforms such a SnapChat and TikTok.
+
+## Data
+
+My variables would be taken from Karina Sokolova's study of the objectification of women on Instagram. My explanatory variable is gender, which is measured by the respondent identifying themselves as either a "Woman" or a "Man" (please note that labels in this description have been translated from the original French in the study). My outcome variable is the respondent's rating of the following statement: "The success of this photo is based on the sex appeal of the model" (referred to as question 16 or q16). The experiment had the respondents rate their response on a scale of 1 to 5, with 1 indicating no relationship between success / sex appeal and 5 indicating a direct relationship between success / sex appeal. My research design is cross-sectional, because the data is observational (ie: no treatment was applied) and taken from a single point in time. Women having higher ratings on average than men would support my hypothesis. Conversely, women having the same or lower ratings on average than men would undermine my hypothesis.
+
+I cleaned the data by removing extraneous Chinese characters from the column titles, translating the titles from French into English, and shortening the full-length questions into q1, q2, q3, etc for the sake of visual clarity. I also dropped the two respondents who answered "Other" when asked for their sex, because I found it misleading to include a separate row in my table and column in my barplot for the average of two responses out of 700.
+
+To determine my target outcome, I grouped my data by sex and summarized their responses to question 16. I knitted these results into a nicely-formatted table and created a barplot to clearly display my results.
 
 ```{r}
 library(tidyverse)
@@ -24,22 +32,85 @@ instagram <- read_csv("~/Library/Mobile Documents/com~apple~Numbers/Documents/so
 names(instagram) <- c("Sex", "Age", "Socioprofessional Category", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15", "q16", "q17", "q18", "q19", "q20", "q21", "q22", "q23", "q24", "q25", "q26", "q27", "q28", "q29", "q30")
 
 instagram <- instagram |>
+  filter(Sex == "Femme" | Sex == "Homme")
+
+instagram_sum <- instagram |>
   group_by(Sex) |>
   summarize(avg_q16 = mean(q16))
 
-instagram_plot <- instagram |>
-  ggplot(aes(x = Sex, y = avg_q16)) + geom_col() + labs(x = "Gender of Respondent", y = "Average Response to Question 16 (1-5)", title = "Relationship between Gender and Belief on Whether or Not Women's
-Sex Appeal Correlates to Instagram Success")
+instagram_plot <- instagram_sum |>
+  ggplot(aes(x = Sex, y = avg_q16)) + geom_col() + labs(x = "Gender of Respondent", y = "Average Response to Question 16 (1-5)", title = "Relationship between Gender and Belief on Whether or Not Women's Sex Appeal
+Correlates to Instagram Success")
 
 instagram_plot
+
+knitr::kable(instagram_sum, digits = 2, col.names = c("Sex", "Avg. Q16"))
+
 ```
 
-## Nicely Formatted Table
+## Results
+
+At first glance, my summary table and barplot show that men are more likely to think that a woman's sexual attractiveness relates to her Instagram success, which would disprove my original hypothesis. However, I needed to:
+
+A) Prove that the difference in means between men and women was significant, and
+B) Ensure that other variables in my dataset, such as the respondent's age or socioprofessional category, were not confounders on my results
+
+For A, I took 1,000 samples of my data and created a null distribution of the results. For B, I ran a multi-linear regression using age and socioprofessional category as controls alongside sex.
 
 ```{r}
-knitr::kable(instagram, digits = 2, col.names = c("Gender", "Avg. Response to Q16"))
+
+set.seed(02138)
+
+library(infer)
+
+mean_diff <- instagram |>
+  group_by(Sex) |>
+  summarize(avg_q16 = mean(q16)) |>
+  pivot_wider(names_from = Sex, values_from = avg_q16) |>
+  mutate(Mean_Diff = `Homme` - `Femme`) |>
+  select(Mean_Diff)
+
+knitr::kable(mean_diff, digits = 2, col.names = c("Mean Difference"))
+
+instagram_boots <- instagram |>
+  specify(q16 ~ Sex) |> 
+  hypothesize(null = "independence") |>
+  generate(reps = 1000, type = "permute") |>
+  calculate(stat = "diff in means", 
+            order = c("Homme", "Femme"))
+
+instagram_p <- instagram_boots |>
+  get_p_value(obs_stat = instagram_boots, direction = "both")
+
+knitr::kable(instagram_p, digits = 2, col.names = c("p-value"))
+
+
+visualize(instagram_boots) + shade_p_value(obs_stat = mean_diff, direction = "both")
 ```
 
-## Analysis
+```{r}
+library(modelsummary)
 
-The results show that men have an average response of 3.78, women have an average response of 3.51, and nonbinary people have an average response of 3.00. Because numbers closer to 5 indicate that the respondent believes in a correlation between sex appeal / Instagram success, then my results indicate that men are more certain of this relationship on average than women, disproving my hypothesis. One reason for this could be that men are more likely to objectify women, leading them to link their successes to their sexual attractiveness.
+fit_instagram <- lm(q16 ~ `Sex` + `Age` + `Socioprofessional Category`, data = instagram)
+
+modelsummary::modelsummary(fit_instagram,
+                           statistic = c("s.e. = {std.error}",
+                                         "p = {p.value}"),
+                           gof_map = c("nobs", "r.squared", "adj.r.squared"))
+```
+
+As mentioned above, the summary table and barplot indicate that, on average, men are more likely to believe that a woman's sexual attractiveness influences her Instagram success than women. The difference in means came out to about 0.27 on a scale of 1-5. The null distribution of the difference in means provides support for this conclusion. The distribution represents the distribution of the difference in means under repeated sampling from the population, assuming that the true difference in means is zero --- in other words, assuming that there was no relationship between sex and a respondent's answer to question 16. The p-value from this distribution is calculated to be zero. Because zero is less than 0.05, we reject the null hypothesis that there is no relationship between sex and response to question 16. In other words, the effect of sex on the response to question 16 is statistically significant.
+
+The multi-linear regression further confirms these results. Sex is found to be statistically significant at the 0.05 level. The coefficient for respondents identifying as men is approximately 0.225. This means that holding age and socioprofessional category as fixed values, respondents identifying as men have ratings that are 0.225 points higher than the ratings of women on a 1-5 scale determining if a woman's sexual attractiveness affects her Instagram success. Because a rating of 5 indicates a direct relationship between sexual attractiveness and Instagram success, the positive coefficient of 0.225 indicates that men on average believe in a more direct relationship between sexual attractiveness and Instagram success than women.
+
+One surprising result from the multi-linear analysis is the statistical significance of age --- the only variable significant at the 0.05 level besides sex. Age is measured in groups labeled 1 through 4: group 1 identifies the youngest age bracket, while group 4 identifies the oldest. The coefficient for age is -0.165. This indicates that for each increase in age bracket, while holding sex and socioprofessional category constant, the average predicted increase in ratings in response to question 16 is -0.165 points on a 1-5 scale. The negative coefficient of -0.165 indicates that older respondents, on average, believe in a less direct relationship between a woman's sexual attractiveness and her Instagram success than younger respondents.
+
+Although both sex and age are significant variables, it is difficult to say that either coefficient represents a causal effect. This is because of the cross-sectional design of the study: because we can only control for observed variables, there is a risk of unmeasured confounding variables.
+
+## Conclusion
+
+The results of the study disprove my original hypothesis, which posited that women are more sensitive than men to the relationship between sex appeal and an Instagram post's success. Instead, the results show that it is men, not women, who believe in a more direct relationship between sexual attractiveness and Instagram success on average. I also found age to have a statistically significant effect on the outcome variable: younger age brackets believed in a more direct relationship between sex appeal and Instagram success than older age brackets on average.
+
+There are a few possible explanations for these findings. It is possible that men have a greater tendency to objectify women, leading them to link a woman's sex appeal to her Instagram success. It is also possible that man may be less aware of other factors that could influence the success of Instagram post, including the time of the day the post was published, the types of images in the post, or corporate sponsorships of the post. For age, it is possible that younger respondents are more familiar with the workings of social media, leading them to draw different conclusions about what could make a post successful than older respondents.
+
+As mentioned in the previous section, the cross-sectional design of the study hinders inference. Although the study takes care to record multiple variables that may impact a respondent's answers, such as age, sex, and socioprofessional category, there are many variables that go unobserved, such as race, religion, and sexual orientation. Each of these variables could have an effect on the outcome, making them possible confounders. To improve my analysis, I would try to examine the quality of the posts being shown to the respondents. The dataset differentiates between posts containing an "Ideal" woman and a "Standard" woman --- what effect does this have on respondents' answers to the survey questions? Although this variable relates to the posts themselves rather than the people participating in the survey, I suspect they could be just as influential on the results of the study. I would also try to collect data on some of the possible unobserved variables listed above, in order to control for confounding as much as possible.
